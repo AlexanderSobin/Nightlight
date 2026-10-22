@@ -34,6 +34,7 @@
 :root {
   --night: #000;
   --lamp: #ffbe5c;
+  --ink-hi: rgb(255, 214, 150);
   --ink: rgb(225, 170, 82);
   --ink-2: rgb(160, 120, 58);
   --ink-3: rgb(102, 76, 37);
@@ -234,29 +235,10 @@ body.bright-lamp .face-status {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  transition: opacity 0.45s ease;
 }
 
 .chrome > * > * {
   pointer-events: auto;
-}
-
-body.chrome-hidden .chrome {
-  opacity: 0;
-}
-
-body.chrome-hidden .chrome > * > * {
-  pointer-events: none;
-}
-
-.topbar {
-  position: absolute;
-  top: calc(var(--safe-top) + 12px);
-  left: 12px;
-  right: 12px;
-  display: flex;
-  justify-content: space-between;
-  pointer-events: none;
 }
 
 .icon-btn {
@@ -303,18 +285,25 @@ body.chrome-hidden .chrome > * > * {
   border-top: 1px solid var(--line);
 }
 
+/* Нижняя панель видна всегда, поэтому она заметнее остального интерфейса. */
 .tab {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  min-height: 56px;
-  padding-top: 7px;
-  border-radius: 14px;
-  color: var(--ink-3);
-  font-size: 12.5px;
-  font-weight: 600;
-  transition: color 0.2s ease;
+  gap: 4px;
+  min-height: 60px;
+  padding-top: 8px;
+  border-radius: 16px;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 700;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.tab svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 2;
 }
 
 .tab span {
@@ -326,7 +315,8 @@ body.chrome-hidden .chrome > * > * {
 }
 
 .tab[aria-selected='true'] {
-  color: var(--ink);
+  color: var(--ink-hi);
+  background: var(--tint);
 }
 
 .tab[aria-selected='true'] svg {
@@ -1052,79 +1042,6 @@ input[type='range']::-moz-range-thumb {
   margin-top: 4px;
 }
 
-/* ---------- Блокировка ---------- */
-
-.lock-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  touch-action: none;
-}
-
-.unlock {
-  position: absolute;
-  top: calc(var(--safe-top) + 10px);
-  left: 10px;
-  display: grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  color: var(--ink-3);
-  opacity: 0.6;
-  transition: opacity 0.3s ease, color 0.3s ease;
-  -webkit-touch-callout: none;
-}
-
-.unlock .ring {
-  position: absolute;
-  inset: 0;
-  width: 52px;
-  height: 52px;
-  transform: rotate(-90deg);
-}
-
-.unlock .ring circle {
-  stroke: var(--ink);
-  stroke-width: 2.5;
-  stroke-dasharray: 151;
-  stroke-dashoffset: 151;
-  transition: stroke-dashoffset 0.2s ease;
-}
-
-.unlock.holding .ring circle {
-  stroke-dashoffset: 0;
-  transition: stroke-dashoffset 1.2s linear;
-}
-
-.lock-layer.hint-visible .unlock,
-.unlock.holding {
-  opacity: 1;
-  color: var(--ink);
-}
-
-.lock-hint {
-  position: absolute;
-  top: calc(var(--safe-top) + 72px);
-  left: 16px;
-  right: 16px;
-  max-width: 340px;
-  margin: 0;
-  padding: 12px 16px;
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.7);
-  border: 1px solid var(--line);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.lock-layer.hint-visible .lock-hint {
-  opacity: 1;
-}
-
 /* ---------- Сообщения ---------- */
 
 .toast {
@@ -1132,7 +1049,7 @@ input[type='range']::-moz-range-thumb {
   z-index: 60;
   left: 16px;
   right: 16px;
-  top: calc(var(--safe-top) + 72px);
+  top: calc(var(--safe-top) + 16px);
   display: flex;
   align-items: center;
   gap: 12px;

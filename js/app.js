@@ -105,6 +105,7 @@ function applyTheme() {
   const rgb = hexToRgb(settings.color);
   const root = document.documentElement.style;
   root.setProperty('--lamp', settings.color);
+  root.setProperty('--ink-hi', shade(rgb, 0.62));
   root.setProperty('--ink', shade(rgb, 0.36));
   root.setProperty('--ink-2', shade(rgb, 0.17));
   root.setProperty('--ink-3', shade(rgb, 0.07));
@@ -297,37 +298,22 @@ function bindGestures() {
 }
 
 function onLampTap() {
-  if (!lamp.on) {
-    setLightOn(true);
-    showChrome();
-    return;
-  }
-  if (sheetOpen) closeSheet();
-  else if (document.body.classList.contains('chrome-hidden')) showChrome();
-  else hideChrome();
+  if (!lamp.on) setLightOn(true);
+  else if (sheetOpen) closeSheet();
 }
 
-// ---------- Кнопки поверх света ----------
+// ---------- Нижняя панель ----------
 
-let hideTimer = null;
+let sheetTimer = null;
 let sheetOpen = null;
 
-function showChrome() {
-  document.body.classList.remove('chrome-hidden');
-  poke();
-}
-
-function hideChrome() {
-  if (sheetOpen) closeSheet();
-  document.body.classList.add('chrome-hidden');
-}
-
-// Кнопки сами прячутся, чтобы не светить лишним.
+// Открытая шторка сама закрывается через минуту, чтобы не заслонять свет.
 function poke() {
-  clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => {
-    if (!recorder.recording) hideChrome();
-  }, sheetOpen ? 60000 : 7000);
+  clearTimeout(sheetTimer);
+  if (!sheetOpen) return;
+  sheetTimer = setTimeout(() => {
+    if (!recorder.recording) closeSheet();
+  }, 60000);
 }
 
 function openSheet(name) {
@@ -367,61 +353,16 @@ function bindChrome() {
     if (e.key === 'Escape' && sheetOpen) closeSheet();
   });
 
-  const fs = $('#fullscreenBtn');
+  // На iPhone браузер не умеет во весь экран — там переключатель скрыт.
   if (document.fullscreenEnabled) {
-    fs.hidden = false;
-    fs.addEventListener('click', () => {
-      if (document.fullscreenElement) document.exitFullscreen();
-      else document.documentElement.requestFullscreen().catch(() => {});
+    const fs = $('#fullscreen');
+    $('#fullscreenRow').hidden = false;
+    fs.addEventListener('change', () => {
+      if (fs.checked) document.documentElement.requestFullscreen().catch(() => { fs.checked = false; });
+      else if (document.fullscreenElement) document.exitFullscreen();
     });
+    document.addEventListener('fullscreenchange', () => { fs.checked = Boolean(document.fullscreenElement); });
   }
-}
-
-// ---------- Блокировка от случайных нажатий ----------
-
-function bindLock() {
-  const layer = $('#lockLayer');
-  const btn = $('#unlockBtn');
-  const hint = $('#lockHint');
-  let hold = null;
-  let hintTimer = null;
-  const showHint = () => {
-    layer.classList.add('hint-visible');
-    clearTimeout(hintTimer);
-    hintTimer = setTimeout(() => layer.classList.remove('hint-visible'), 2500);
-  };
-
-  $('#lockBtn').addEventListener('click', () => {
-    hideChrome();
-    layer.hidden = false;
-    hint.textContent = 'Экран заблокирован. Удерживайте замок, чтобы снять блокировку.';
-    showHint();
-  });
-
-  layer.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('#unlockBtn')) return;
-    showHint();
-  });
-
-  const cancel = () => {
-    clearTimeout(hold);
-    hold = null;
-    btn.classList.remove('holding');
-  };
-  btn.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    btn.classList.add('holding');
-    showHint();
-    hold = setTimeout(() => {
-      cancel();
-      layer.hidden = true;
-      showChrome();
-    }, 1200);
-  });
-  btn.addEventListener('pointerup', cancel);
-  btn.addEventListener('pointerleave', cancel);
-  btn.addEventListener('pointercancel', cancel);
-  btn.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
 // ---------- Звуки ----------
@@ -918,7 +859,7 @@ function firstRunHint() {
   } catch (e) {
     return;
   }
-  setTimeout(() => toast('Касание прячет кнопки. Проведите вверх или вниз, чтобы менять яркость.'), 900);
+  setTimeout(() => toast('Ведите пальцем по свету вверх или вниз — меняется яркость, в сторону — цвет.'), 900);
 }
 
 function init() {
@@ -926,7 +867,6 @@ function init() {
   buildLightPanel();
   bindGestures();
   bindChrome();
-  bindLock();
   bindSoundPanel();
   bindTimerPanel();
   bindBabyPanel();
@@ -966,6 +906,11 @@ function init() {
   firstRunHint();
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    // Новая версия подхватывается сразу, если сейчас ничего не играет.
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController && !engine.playing && !listening && !recorder.recording) location.reload();
+    });
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 }

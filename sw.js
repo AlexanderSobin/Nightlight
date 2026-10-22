@@ -1,6 +1,6 @@
 // Офлайн-режим: после первого открытия ночник работает без интернета.
 // При изменении файлов увеличьте номер версии, чтобы телефоны получили обновление.
-const CACHE = 'nightlight-v1';
+const CACHE = 'nightlight-v2';
 
 const ASSETS = [
   './',
@@ -26,7 +26,9 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // cache: 'reload' — берём свежие файлы с сервера, а не из кэша браузера.
+  const requests = ASSETS.map((url) => new Request(url, { cache: 'reload' }));
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(requests)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -62,7 +64,8 @@ self.addEventListener('fetch', (event) => {
     const cache = await caches.open(CACHE);
     const key = request.mode === 'navigate' ? 'index.html' : request;
     const cached = await cache.match(key, { ignoreSearch: true });
-    const network = fetch(request.headers.has('range') ? request.url : request)
+    const plain = request.headers.has('range') || request.mode === 'navigate';
+    const network = fetch(plain ? request.url : request, { cache: 'no-cache' })
       .then((res) => {
         if (res.ok && res.status === 200) cache.put(key, res.clone());
         return res;
