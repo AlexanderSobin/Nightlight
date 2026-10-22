@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Ночник для укладывания малыша: тёплый свет, белый шум, колыбельные, таймер сна и дневник кормлений.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ночник">
+  <title>Ночник</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preload" href="fonts/nunito-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/comfortaa-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true">
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M9 18V5.5l10-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><path d="M6.5 3h11M6.5 21h11M8 3c0 4.5 4 5.5 4 9s-4 4.5-4 9M16 3c0 4.5-4 5.5-4 9s4 4.5 4 9"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10.2A4.1 4.1 0 0 1 12 7.4a4.1 4.1 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8.5 5.5v13l10-6.5z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12" stroke-width="2.6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
+  </svg>
+
+  <div id="lamp" class="lamp">
+    <div id="lampGlow" class="lamp-glow"></div>
+    <canvas id="stars" class="stars" hidden></canvas>
+  </div>
+
+  <div id="face" class="face" aria-hidden="true">
+    <p id="clock" class="clock">--:--</p>
+    <p id="faceStatus" class="face-status"></p>
+  </div>
+
+  <div id="hud" class="hud" role="status" aria-live="polite"></div>
+
+  <div id="chrome" class="chrome">
+    <div class="topbar">
+      <button id="lockBtn" class="icon-btn" aria-label="Заблокировать экран от случайных нажатий">
+        <svg aria-hidden="true"><use href="#i-lock"/></svg>
+      </button>
+      <button id="fullscreenBtn" class="icon-btn" aria-label="На весь экран" hidden>
+        <svg aria-hidden="true"><use href="#i-expand"/></svg>
+      </button>
+    </div>
+
+    <div class="dock">
+      <button id="nowPlaying" class="now-playing" hidden>
+        <svg aria-hidden="true"><use href="#i-pause"/></svg>
+        <span class="np-text"></span>
+        <span class="np-timer tabular"></span>
+      </button>
+
+      <div id="sheet" class="sheet" inert>
+        <section class="panel" data-panel="light" role="tabpanel" aria-label="Свет" hidden>
+          <div class="panel-head">
+            <h2>Свет</h2>
+            <label class="switch">
+              <input type="checkbox" id="lightOn" checked>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="visually-hidden">Ночник включён</span>
+            </label>
+          </div>
+          <div id="swatches" class="swatches" role="radiogroup" aria-label="Цвет света"></div>
+          <p class="hint">Тёплые оттенки меньше всего мешают сну. Красный хорош для ночных кормлений.</p>
+
+          <div class="slider-row">
+            <label for="brightness">Яркость</label>
+            <output id="brightnessOut" for="brightness"></output>
+          </div>
+          <input type="range" id="brightness" min="1" max="100" step="1">
+          <p class="hint">Ведите пальцем по свету вверх или вниз — меняется яркость, в сторону — цвет.</p>
+
+          <h3>Свечение</h3>
+          <div id="effects" class="segmented" role="radiogroup" aria-label="Свечение">
+            <button role="radio" data-effect="steady">Ровное</button>
+            <button role="radio" data-effect="breathe">Дыхание</button>
+            <button role="radio" data-effect="candle">Свеча</button>
+            <button role="radio" data-effect="stars">Звёзды</button>
+          </div>
+          <p id="effectHint" class="hint"></p>
+
+          <label class="toggle-row">
+            <span>Часы на экране</span>
+            <span class="switch"><input type="checkbox" id="showClock"><span class="switch-track" aria-hidden="true"></span></span>
+          </label>
+          <p class="hint">Для самого мягкого света убавьте ещё и яркость экрана в настройках телефона.</p>
+        </section>
+
+        <section class="panel" data-panel="sound" role="tabpanel" aria-label="Звуки" hidden>
+          <div class="panel-head">
+            <h2>Звуки</h2>
+            <button id="playBtn" class="play-btn" aria-label="Включить звук">
+              <svg aria-hidden="true"><use href="#i-play"/></svg>
+            </button>
+          </div>
+
+          <h3>Шум</h3>
+          <div id="noiseChips" class="chips"></div>
+          <div class="slider-row">
+            <label for="noiseVolume">Громкость шума</label>
+            <output id="noiseVolumeOut" for="noiseVolume"></output>
+          </div>
+          <input type="range" id="noiseVolume" min="0" max="100" step="1">
+
+          <h3>Колыбельные</h3>
+          <div id="musicChips" class="chips"></div>
+          <div class="slider-row">
+            <label for="musicVolume">Громкость мелодии</label>
+            <output id="musicVolumeOut" for="musicVolume"></output>
+          </div>
+          <input type="range" id="musicVolume" min="0" max="100" step="1">
+
+          <div id="voiceBox" class="voice">
+            <p class="hint">Запишите, как вы поёте колыбельную или шепчете «шшш», — запись будет звучать по кругу. До трёх минут.</p>
+            <div class="row">
+              <button id="recordBtn" class="btn">
+                <svg aria-hidden="true"><use href="#i-mic"/></svg>
+                <span>Записать голос</span>
+              </button>
+              <button id="deleteVoiceBtn" class="btn quiet" hidden>Удалить запись</button>
+            </div>
+          </div>
+
+          <p class="hint">Шум и мелодию можно включить вместе. Ставьте телефон не ближе 2 метров от кроватки, а громкость держите не выше тихого разговора.</p>
+        </section>
+
+        <section class="panel" data-panel="timer" role="tabpanel" aria-label="Таймер" hidden>
+          <div class="panel-head">
+            <h2>Таймер</h2>
+            <p id="timerLeft" class="timer-left tabular" aria-live="off"></p>
+          </div>
+          <div id="timerChips" class="chips"></div>
+          <p id="timerHint" class="hint"></p>
+
+          <h3>Когда время выйдет</h3>
+          <label class="toggle-row">
+            <span>Плавно выключить звук</span>
+            <span class="switch"><input type="checkbox" id="timerStopsSound"><span class="switch-track" aria-hidden="true"></span></span>
+          </label>
+          <label class="toggle-row">
+            <span>Плавно погасить свет</span>
+            <span class="switch"><input type="checkbox" id="timerStopsLight"><span class="switch-track" aria-hidden="true"></span></span>
+          </label>
+
+          <h3>Если малыш проснётся</h3>
+          <label class="toggle-row">
+            <span>Снова включать звук, когда малыш плачет</span>
+            <span class="switch"><input type="checkbox" id="cryWake"><span class="switch-track" aria-hidden="true"></span></span>
+          </label>
+          <p id="cryUnsupported" class="hint" hidden>Этот браузер не даёт доступ к микрофону.</p>
+          <div id="cryOptions" class="cry-options">
+            <div class="slider-row">
+              <label for="crySensitivity">Чувствительность</label>
+              <output id="crySensOut" for="crySensitivity"></output>
+            </div>
+            <input type="range" id="crySensitivity" min="0" max="100" step="1">
+            <p class="sub-label">Сколько играть после плача</p>
+            <div id="cryRestartChips" class="chips"></div>
+            <div id="listenStatus" class="listen-status" hidden>
+              <span>Слушаю малыша</span>
+              <span class="meter" aria-hidden="true"><span id="micLevel"></span></span>
+            </div>
+            <p class="hint">Когда таймер выключит звук, телефон будет слушать комнату через микрофон. Звук никуда не записывается и не отправляется.</p>
+          </div>
+        </section>
+
+        <section class="panel" data-panel="baby" role="tabpanel" aria-label="Малыш" hidden>
+          <div class="panel-head">
+            <h2 id="babyTitle">Малыш</h2>
+            <p id="babyAge" class="age"></p>
+          </div>
+          <div id="journalLive" class="journal"></div>
+
+          <details class="fold">
+            <summary>О малыше</summary>
+            <label class="field">
+              <span>Имя</span>
+              <input id="babyName" type="text" autocomplete="off" maxlength="30" placeholder="Например, Маша">
+            </label>
+            <label class="field">
+              <span>Дата рождения</span>
+              <input id="babyBirth" type="date">
+            </label>
+            <div id="babyGender" class="segmented" role="radiogroup" aria-label="Кто у вас">
+              <button role="radio" data-girl="1">Дочка</button>
+              <button role="radio" data-girl="0">Сын</button>
+            </div>
+            <p class="hint">По дате рождения ночник подсказывает окна бодрствования и норму сна. Всё хранится только на этом телефоне.</p>
+          </details>
+
+          <details class="fold">
+            <summary>Советы для спокойного сна</summary>
+            <div class="tips">
+              <h4>Безопасный сон</h4>
+              <ul>
+                <li>Кладите малыша спать на спинку, на ровный и довольно жёсткий матрас.</li>
+                <li>В кроватке ничего лишнего: ни подушек, ни одеял, ни бортиков, ни игрушек.</li>
+                <li>Не перегревайте: в комнате 18–22 °C, на малыше на один слой больше, чем на вас.</li>
+                <li>Белый шум — тихо и подальше: телефон не ближе 2 метров от кроватки.</li>
+              </ul>
+              <h4>Малыш устал, если</h4>
+              <p>трёт глазки и ушки, зевает, отводит взгляд, замирает, хнычет без причины. Начинайте укладывать при первых признаках: перевозбуждённому малышу уснуть труднее. Окна бодрствования во вкладке «Малыш» подскажут, когда их ждать.</p>
+              <h4>Ритуал перед сном</h4>
+              <p>Повторяйте одни и те же шаги каждый вечер: купание, массаж, пижама, кормление, колыбельная, приглушённый свет. Через пару недель ритуал сам будет говорить малышу, что пора спать.</p>
+              <h4>Если не успокаивается</h4>
+              <p>Помогает всё, что напоминает животик мамы: пеленание (пока малыш не начал переворачиваться), ритмичное «шшш», мягкое покачивание на руках, соска или грудь. Когда малыш затихнет, убавляйте шум постепенно.</p>
+              <h4>Защита от нажатий</h4>
+              <p>Замок в углу экрана блокирует касания. Чтобы малыш не вышел из ночника, включите «Гид-доступ» на iPhone или «Закрепление приложения» на Android.</p>
+              <p class="hint">Это общие советы, а не замена врачу. Если что-то тревожит — посоветуйтесь с педиатром.</p>
+            </div>
+          </details>
+        </section>
+      </div>
+
+      <nav class="tabs" role="tablist" aria-label="Разделы">
+        <button class="tab" role="tab" data-tab="light" aria-selected="false">
+          <svg aria-hidden="true"><use href="#i-moon"/></svg><span>Свет</span>
+        </button>
+        <button class="tab" role="tab" data-tab="sound" aria-selected="false">
+          <svg aria-hidden="true"><use href="#i-note"/></svg><span>Звуки</span>
+        </button>
+        <button class="tab" role="tab" data-tab="timer" aria-selected="false">
+          <svg aria-hidden="true"><use href="#i-timer"/></svg><span>Таймер</span>
+        </button>
+        <button class="tab" role="tab" data-tab="baby" aria-selected="false">
+          <svg aria-hidden="true"><use href="#i-heart"/></svg><span>Малыш</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <div id="lockLayer" class="lock-layer" hidden>
+    <button id="unlockBtn" class="unlock" aria-label="Удерживайте, чтобы снять блокировку">
+      <svg class="ring" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/></svg>
+      <svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>
+    </button>
+    <p id="lockHint" class="lock-hint"></p>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+    <span class="toast-text"></span>
+    <button class="toast-action" hidden></button>
+  </div>
+
+  <video id="keepAwake" class="keep-awake" playsinline muted loop preload="auto" aria-hidden="true" tabindex="-1">
+    <source src="media/keepawake.mp4" type="video/mp4">
+  </video>
+</body>
+</html>

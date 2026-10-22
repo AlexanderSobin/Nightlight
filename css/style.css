@@ -1,0 +1,1194 @@
+/* Шрифты лежат рядом, чтобы ночник работал без интернета. */
+@font-face {
+  font-family: 'Comfortaa';
+  font-weight: 300 700;
+  font-display: swap;
+  src: url(../fonts/comfortaa-cyrillic.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Comfortaa';
+  font-weight: 300 700;
+  font-display: swap;
+  src: url(../fonts/comfortaa-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Nunito';
+  font-weight: 200 1000;
+  font-display: swap;
+  src: url(../fonts/nunito-cyrillic.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Nunito';
+  font-weight: 200 1000;
+  font-display: swap;
+  src: url(../fonts/nunito-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Цвета интерфейса вычисляются из цвета ночника (см. applyTheme в app.js):
+   кнопки словно освещены той же лампой. Чёрный — настоящий #000,
+   на OLED-экранах такие пиксели просто не светятся. */
+:root {
+  --night: #000;
+  --lamp: #ffbe5c;
+  --ink: rgb(225, 170, 82);
+  --ink-2: rgb(160, 120, 58);
+  --ink-3: rgb(102, 76, 37);
+  --line: rgba(255, 190, 92, 0.2);
+  --tint: rgba(255, 190, 92, 0.12);
+  --star: rgb(255, 214, 150);
+  --veil: rgba(0, 0, 0, 0.82);
+  --display: 'Comfortaa', 'Nunito', system-ui, sans-serif;
+  --text: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--night);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 16px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+.sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Лампа ---------- */
+
+.lamp {
+  position: fixed;
+  inset: 0;
+  background: var(--night);
+  touch-action: none;
+}
+
+.lamp-glow {
+  position: absolute;
+  inset: 0;
+  background-color: var(--lamp);
+  /* Лёгкая виньетка: свет ощущается как свечение, а не как плоский экран. */
+  background-image: radial-gradient(ellipse 130% 95% at 50% 40%, transparent 45%, rgba(0, 0, 0, 0.3) 100%);
+  opacity: 0.1;
+  will-change: opacity;
+}
+
+body[data-effect='steady'] .lamp-glow {
+  transition: opacity 0.6s ease;
+}
+
+.stars {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- Часы ---------- */
+
+.face {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 26%;
+  text-align: center;
+  pointer-events: none;
+  transform: translate(var(--dx, 0), var(--dy, 0));
+  transition: transform 3s ease, opacity 0.6s ease;
+}
+
+.clock {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 300;
+  font-size: clamp(72px, 25vw, 168px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  opacity: 0.42;
+}
+
+.face-status {
+  margin: 18px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink-2);
+  opacity: 0.85;
+}
+
+/* На ярком свете часы темнее фона, а не светлее. */
+body.sheet-open .face {
+  opacity: 0;
+}
+
+body.bright-lamp .clock,
+body.bright-lamp .face-status {
+  color: #000;
+  opacity: 0.32;
+}
+
+.hud {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--safe-top) + 18%);
+  transform: translate(-50%, 8px);
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.hud.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ---------- Кнопки поверх света ---------- */
+
+.chrome {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+
+.chrome > * > * {
+  pointer-events: auto;
+}
+
+body.chrome-hidden .chrome {
+  opacity: 0;
+}
+
+body.chrome-hidden .chrome > * > * {
+  pointer-events: none;
+}
+
+.topbar {
+  position: absolute;
+  top: calc(var(--safe-top) + 12px);
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: var(--ink-2);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--line);
+}
+
+.icon-btn.small {
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: 0;
+  color: var(--ink-3);
+}
+
+.icon-btn.small svg {
+  width: 18px;
+  height: 18px;
+}
+
+.dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.tabs {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 6px 8px calc(var(--safe-bottom) + 6px);
+  background: var(--veil);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--line);
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 56px;
+  padding-top: 7px;
+  border-radius: 14px;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.tab span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--ink);
+}
+
+.tab[aria-selected='true'] svg {
+  filter: drop-shadow(0 0 6px var(--lamp));
+}
+
+.now-playing {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 14px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 32px);
+  height: 46px;
+  padding: 0 18px 0 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.np-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-timer {
+  color: var(--ink-2);
+}
+
+.np-timer:empty {
+  display: none;
+}
+
+body.sound-loading .now-playing svg,
+body.sound-loading .play-btn svg {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% { opacity: 0.35; }
+}
+
+body.sheet-open .now-playing {
+  display: none;
+}
+
+/* ---------- Нижняя шторка ---------- */
+
+.sheet {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  max-height: min(66vh, 620px);
+  max-height: min(66dvh, 620px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: var(--veil);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 28px 28px 0 0;
+  transform: translateY(24px);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 0.3s ease, opacity 0.25s ease, visibility 0s linear 0.3s;
+}
+
+.sheet.open {
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  transition: transform 0.3s ease, opacity 0.25s ease;
+}
+
+.panel {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px 20px 28px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  margin-bottom: 10px;
+}
+
+h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+h3 {
+  margin: 26px 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.hint {
+  margin: 10px 0 0;
+  max-width: 62ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.sub-label {
+  margin: 18px 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.age {
+  margin: 0;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ---------- Цвета ---------- */
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px 6px;
+}
+
+.swatch {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.swatch-dot {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--c);
+  /* Невыбранные цвета приглушены, чтобы палитра не слепила ночью. */
+  opacity: 0.42;
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.swatch[aria-checked='true'] .swatch-dot {
+  opacity: 1;
+  box-shadow: 0 0 0 3px #000, 0 0 0 5px var(--c), 0 0 22px 2px var(--c);
+}
+
+.swatch.custom .swatch-dot {
+  --c: var(--lamp);
+  background: conic-gradient(#ff8db4, #ffbe5c, #97e6c4, #8ccbff, #c3a2ff, #ff8db4);
+}
+
+.swatch.custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+
+.swatch-name {
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+.swatch[aria-checked='true'] .swatch-name {
+  color: var(--ink);
+}
+
+/* ---------- Ползунки ---------- */
+
+.slider-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 22px 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.slider-row output {
+  font-family: var(--display);
+  font-size: 17px;
+  color: var(--ink);
+}
+
+input[type='range'] {
+  --fill: 50%;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  touch-action: pan-y;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--ink-3) var(--fill), var(--line) var(--fill));
+}
+
+input[type='range']::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--ink-3) var(--fill), var(--line) var(--fill));
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -10px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 4px solid #000;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 4px solid #000;
+}
+
+/* ---------- Переключатели, чипы, кнопки ---------- */
+
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.segmented button {
+  flex: 1;
+  min-height: 42px;
+  padding: 0 6px;
+  border-radius: 12px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.segmented button[aria-checked='true'] {
+  background: var(--tint);
+  color: var(--ink);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.chip[aria-pressed='true'] {
+  color: var(--ink);
+  background: var(--tint);
+  border-color: var(--ink-3);
+}
+
+.chip[aria-pressed='true']::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 8px var(--lamp);
+}
+
+.chip.empty {
+  border-style: dashed;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.row.split .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.btn.primary {
+  flex: 1;
+  background: var(--tint);
+  border-color: var(--ink-3);
+}
+
+.btn.on {
+  background: var(--tint);
+  border-color: var(--ink);
+  box-shadow: 0 0 16px -4px var(--lamp);
+}
+
+.btn.suggested {
+  border-color: var(--ink-2);
+}
+
+.btn.quiet {
+  border-color: transparent;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.btn.recording {
+  border-color: var(--ink);
+}
+
+.btn.recording svg {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.play-btn {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--tint);
+  border: 1px solid var(--ink-3);
+  color: var(--ink);
+  transition: box-shadow 0.3s ease;
+}
+
+.play-btn svg {
+  width: 28px;
+  height: 28px;
+}
+
+.play-btn.on {
+  box-shadow: 0 0 0 6px var(--tint), 0 0 28px -6px var(--lamp);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 52px;
+  height: 32px;
+  cursor: pointer;
+}
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  transition: background 0.2s ease;
+  pointer-events: none;
+}
+
+.switch-track::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.switch input:checked + .switch-track {
+  background: var(--tint);
+  border-color: var(--ink-3);
+}
+
+.switch input:checked + .switch-track::after {
+  transform: translateX(20px);
+  background: var(--ink);
+  box-shadow: 0 0 10px var(--lamp);
+}
+
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.cry-options {
+  transition: opacity 0.2s ease;
+}
+
+.cry-options.disabled {
+  opacity: 0.45;
+}
+
+.listen-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.meter {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  background: var(--ink-2);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.1s linear;
+}
+
+.timer-left {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 26px;
+  color: var(--ink);
+}
+
+.voice {
+  margin-top: 22px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- Малыш ---------- */
+
+.journal h3 {
+  margin-top: 22px;
+}
+
+.card {
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+
+.card-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.card-big {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.card-note {
+  margin: 6px 0 0;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.time-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-edit input {
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.window-bar {
+  position: relative;
+  height: 8px;
+  margin: 14px 4px 4px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.window-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--ink-3);
+}
+
+.window-now {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 3px solid #000;
+  transform: translate(-50%, -50%);
+}
+
+.summary {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.log li {
+  display: grid;
+  grid-template-columns: 52px 1fr 36px;
+  align-items: center;
+  gap: 6px;
+  min-height: 46px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+  color: var(--ink);
+}
+
+.log time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.fold {
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.fold summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  font-size: 16px;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+
+.fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold summary::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-right: 2px solid var(--ink-2);
+  border-bottom: 2px solid var(--ink-2);
+  transform: rotate(45deg) translateY(-3px);
+  transition: transform 0.2s ease;
+}
+
+.fold[open] summary::after {
+  transform: rotate(-135deg) translateY(-3px);
+}
+
+.field {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.field span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.field input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.field input::placeholder {
+  color: var(--ink-3);
+}
+
+.tips {
+  padding-bottom: 8px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.tips h4 {
+  margin: 16px 0 6px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.tips p,
+.tips ul {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.tips ul {
+  padding-left: 18px;
+}
+
+.tips li + li {
+  margin-top: 4px;
+}
+
+/* ---------- Блокировка ---------- */
+
+.lock-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  touch-action: none;
+}
+
+.unlock {
+  position: absolute;
+  top: calc(var(--safe-top) + 10px);
+  left: 10px;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  color: var(--ink-3);
+  opacity: 0.6;
+  transition: opacity 0.3s ease, color 0.3s ease;
+  -webkit-touch-callout: none;
+}
+
+.unlock .ring {
+  position: absolute;
+  inset: 0;
+  width: 52px;
+  height: 52px;
+  transform: rotate(-90deg);
+}
+
+.unlock .ring circle {
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  transition: stroke-dashoffset 0.2s ease;
+}
+
+.unlock.holding .ring circle {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1.2s linear;
+}
+
+.lock-layer.hint-visible .unlock,
+.unlock.holding {
+  opacity: 1;
+  color: var(--ink);
+}
+
+.lock-hint {
+  position: absolute;
+  top: calc(var(--safe-top) + 72px);
+  left: 16px;
+  right: 16px;
+  max-width: 340px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--line);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.lock-layer.hint-visible .lock-hint {
+  opacity: 1;
+}
+
+/* ---------- Сообщения ---------- */
+
+.toast {
+  position: fixed;
+  z-index: 60;
+  left: 16px;
+  right: 16px;
+  top: calc(var(--safe-top) + 72px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid var(--line);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  animation: toast-in 0.25s ease;
+}
+
+.toast-text {
+  flex: 1;
+}
+
+.toast-action {
+  min-height: 36px;
+  padding: 0 4px;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+}
+
+.keep-awake {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0.01;
+  pointer-events: none;
+}
+
+@media (min-width: 700px) {
+  .sheet {
+    left: 50%;
+    right: auto;
+    width: 600px;
+    margin-left: -300px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
