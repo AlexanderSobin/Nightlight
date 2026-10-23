@@ -17,10 +17,16 @@ export const NOISES = [
 ];
 
 export const MELODIES = [
+  { id: 'radost', name: 'Спи, моя радость' },
   { id: 'brahms', name: 'Брамс' },
+  { id: 'kindlein', name: 'Спи, малютка' },
   { id: 'twinkle', name: 'Звёздочка' },
+  { id: 'silent', name: 'Тихая ночь' },
   { id: 'moon', name: 'Лунный свет' },
+  { id: 'goodmoon', name: 'Добрый месяц' },
+  { id: 'moonrise', name: 'Взошла луна' },
   { id: 'musicbox', name: 'Шкатулка' },
+  { id: 'medley', name: 'Все по кругу' },
   { id: 'voice', name: 'Мамин голос' },
 ];
 
@@ -335,8 +341,9 @@ function makeFan(sr) {
 const NOTE_INDEX = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
 function midiOf(name) {
-  const m = /^([A-G])(#?)(\d)$/.exec(name);
-  return 12 * (Number(m[3]) + 1) + NOTE_INDEX[m[1]] + (m[2] ? 1 : 0);
+  const m = /^([A-G])([#b]?)(\d)$/.exec(name);
+  const accidental = m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0;
+  return 12 * (Number(m[3]) + 1) + NOTE_INDEX[m[1]] + accidental;
 }
 
 // «E5:.5 G5:1.5 r:2» → [[midi|null, долей]]
@@ -365,6 +372,53 @@ const TUNES = {
       'G5:1 G5:1 F5:1 F5:1 E5:1 E5:1 D5:2 G5:1 G5:1 F5:1 F5:1 E5:1 E5:1 D5:2 ' +
       'C5:1 C5:1 G5:1 G5:1 A5:1 A5:1 G5:2 F5:1 F5:1 E5:1 E5:1 D5:1 D5:1 C5:2 r:2',
   },
+  // «Спи, моя радость, усни» — «Schlafe, mein Prinzchen» Б. Флиса (1796),
+  // долго считалась колыбельной Моцарта. Ноты: Essen Folksong Collection.
+  radost: {
+    bpm: 88,
+    notes:
+      'A5:.5 Bb5:.5 A5:.5 G5:.5 F5:.5 G5:.5 F5:1 r:2 F5:.5 Bb5:.5 Bb5:.5 Bb5:.5 C6:.5 D6:.5 C6:1 r:2 ' +
+      'G5:.5 F#5:.5 G5:.5 G5:.5 F5:.5 G5:.5 A5:1 r:2 A5:.5 G5:.5 A5:.5 Bb5:.5 A5:.5 Bb5:.5 C6:1 r:2 ' +
+      'D6:.5 C#6:.5 D6:.5 D6:.5 C6:.5 D6:.5 F6:1 r:2 C6:.5 C6:.5 C6:.5 C6:.5 B5:.5 C6:.5 F6:1 r:2 ' +
+      'Bb5:.5 C6:.5 Bb5:.5 A5:.5 Bb5:.5 C6:.5 C5:1 r:2 A5:.5 Bb5:.5 A5:.5 G5:.5 F5:.5 G5:.5 F5:1.5 r:1.5',
+  },
+  // «Тихая ночь» — Ф. Грубер (1818)
+  silent: {
+    bpm: 66,
+    notes:
+      'G5:.75 A5:.25 G5:.5 E5:1.5 G5:.75 A5:.25 G5:.5 E5:1.5 D6:1 D6:.5 B5:1.5 C6:1 C6:.5 G5:1.5 ' +
+      'A5:1 A5:.5 C6:.75 B5:.25 A5:.5 G5:.75 A5:.25 G5:.5 E5:1.5 A5:1 A5:.5 C6:.75 B5:.25 A5:.5 ' +
+      'G5:.75 A5:.25 G5:.5 E5:1.5 D6:1 D6:.5 F6:.75 D6:.25 B5:.5 C6:1.5 E6:1 r:.5 ' +
+      'C6:.5 G5:.5 E5:.5 G5:.75 F5:.25 D5:.5 C5:1.5 C5:1 r:.5',
+  },
+  // «Спи, малютка, спи» (Schlaf, Kindlein, schlaf) — немецкая народная колыбельная
+  kindlein: {
+    bpm: 66,
+    notes:
+      'A5:1 G5:.5 G5:.5 F5:1 r:.5 C5:.5 A5:.5 A5:.5 G5:.5 G5:.5 F5:1 r:.5 ' +
+      'F5:.5 Bb5:.5 Bb5:.5 G5:.5 G5:.5 C6:.5 C6:.5 A5:.5 A5:.5 Bb5:.5 Bb5:.5 G5:.5 G5:.5 C6:.5 C6:.5 A5:1 ' +
+      'Bb5:1 G5:.5 G5:.5 F5:1 r:1',
+  },
+  // «Добрый месяц» (Guter Mond, du gehst so stille) — немецкая народная песня
+  goodmoon: {
+    bpm: 72,
+    notes:
+      'D6:.5 C6:.5 B5:1 B5:1 B5:.5 C6:.5 D6:.5 E6:.5 D6:.5 C6:.5 A5:1 r:1 ' +
+      'D6:.5 C6:.5 B5:1 B5:1 A5:.5 G5:.5 A5:.5 B5:.5 G5:2 r:1 ' +
+      'A5:.5 B5:.5 C6:1 A5:1 r:1 B5:.5 C6:.5 D6:1 B5:1 r:1 ' +
+      'D6:.5 D6:.5 E6:1.5 D6:.5 E6:.5 D6:.5 C6:.5 B5:.5 B5:1 A5:1 r:1 ' +
+      'D6:.5 C6:.5 B5:1 B5:1 B5:.5 C6:.5 D6:.5 E6:.5 D6:.5 C6:.5 A5:1 r:1 ' +
+      'D6:.5 C6:.5 B5:1 B5:1 A5:.5 G5:.5 A5:.5 B5:.5 G5:2 r:1',
+  },
+  // «Взошла луна» (Der Mond ist aufgegangen) — И. А. П. Шульц (1790)
+  moonrise: {
+    bpm: 66,
+    notes:
+      'G5:1 A5:1 G5:1 C6:1 B5:1 A5:2 G5:1 B5:1 B5:1 B5:1 E6:1 D6:1 C6:2 ' +
+      'B5:1 B5:1 B5:1 B5:1 C6:1 B5:1 A5:2 r:1 ' +
+      'G5:1 A5:1 G5:1 C6:1 B5:1 A5:2 G5:1 B5:1 B5:1 B5:1 E6:1 D6:1 C6:2 ' +
+      'B5:1 B5:1 B5:1 B5:1 C6:1 B5:1 A5:1 A5:1 G5:2 r:1',
+  },
   // «При лунном свете» (Au clair de la lune) — французская народная песня
   moon: {
     bpm: 72,
@@ -379,10 +433,12 @@ const TUNES = {
 // Нота музыкальной шкатулки: несколько затухающих гармоник.
 // Пишется в буфер по кругу, поэтому хвост последней ноты
 // плавно переходит в начало петли.
+const BELL_SECONDS = 2.8;
+
 function addBell(out, sr, start, midi, vel) {
   const n = out.length;
   const f = 440 * Math.pow(2, (midi - 69) / 12);
-  const len = Math.floor(sr * 2.8);
+  const len = Math.floor(sr * BELL_SECONDS);
   const pitchScale = Math.pow(523 / f, 0.35);
   const partials = [
     [1, 1, 1.5],
@@ -415,20 +471,25 @@ function makeTune(sr, id) {
   const tune = TUNES[id];
   const notes = parseTune(tune.notes);
   const beat = 60 / tune.bpm;
-  const totalBeats = notes.reduce((sum, [, d]) => sum + d, 0);
-  const n = Math.round(totalBeats * beat * sr);
-  const out = new Float32Array(n);
+  const onsets = [];
   let t = 0;
   for (const [midi, d] of notes) {
-    if (midi !== null) {
-      // Лёгкое «человеческое» дыхание в силе и времени.
-      const vel = 0.8 + Math.random() * 0.15;
-      const jitter = Math.floor((Math.random() - 0.5) * sr * 0.012);
-      addBell(out, sr, Math.max(0, Math.floor(t * sr) + jitter), midi, vel);
-    }
+    if (midi !== null) onsets.push([t, midi]);
     t += d * beat;
   }
-  return normalize([out, out.slice()], 0.12);
+  // Последняя нота должна успеть отзвучать: тогда колыбельную можно
+  // и зациклить, и сыграть один раз в режиме «Все по кругу».
+  const lastOnset = onsets[onsets.length - 1][0];
+  const n = Math.round(Math.max(t, lastOnset + BELL_SECONDS + 0.3) * sr);
+  const out = new Float32Array(n);
+  for (const [start, midi] of onsets) {
+    // Лёгкое «человеческое» дыхание в силе и времени.
+    const vel = 0.8 + Math.random() * 0.15;
+    const jitter = Math.floor((Math.random() - 0.5) * sr * 0.012);
+    addBell(out, sr, Math.max(0, Math.floor(start * sr) + jitter), midi, vel);
+  }
+  // Шкатулка звучит из одной точки — хватит одного канала, вдвое меньше памяти.
+  return normalize([out], 0.12);
 }
 
 // Бесконечная тихая импровизация на пентатонике — как мобиль над кроваткой.
@@ -451,7 +512,7 @@ function makeMusicBox(sr) {
     idx = Math.min(scale.length - 1, Math.max(0, idx + step));
     t += Math.random() < 0.18 ? 1.6 : 0.8;
   }
-  return normalize([out, out.slice()], 0.11);
+  return normalize([out], 0.11);
 }
 
 const BUILDERS = {
@@ -464,10 +525,8 @@ const BUILDERS = {
   shush: makeShush,
   dryer: makeDryer,
   fan: makeFan,
-  brahms: (sr) => makeTune(sr, 'brahms'),
-  twinkle: (sr) => makeTune(sr, 'twinkle'),
-  moon: (sr) => makeTune(sr, 'moon'),
   musicbox: makeMusicBox,
+  ...Object.fromEntries(Object.keys(TUNES).map((id) => [id, (sr) => makeTune(sr, id)])),
 };
 
 // Для тестов и предпрослушивания: сгенерировать сырые каналы.
@@ -494,6 +553,9 @@ function makeImpulse(ctx) {
 // ---------- Плеер ----------
 
 const MAX_GAIN = { noise: 0.9, music: 0.85 };
+
+// Порядок колыбельных в режиме «Все по кругу».
+const MEDLEY = ['radost', 'brahms', 'kindlein', 'twinkle', 'silent', 'moon', 'goodmoon', 'moonrise'];
 const WET = { voice: 0.12, default: 0.4 };
 
 export class SoundEngine {
@@ -507,8 +569,8 @@ export class SoundEngine {
     this.reqId = 0;
     this.loading = 0;
     this.layers = {
-      noise: { id: null, volume: 0.45, src: null, fade: null, token: 0 },
-      music: { id: null, volume: 0.4, src: null, fade: null, token: 0 },
+      noise: { id: null, volume: 0.45, srcs: [], fade: null, token: 0, timers: [], now: null, next: 0 },
+      music: { id: null, volume: 0.4, srcs: [], fade: null, token: 0, timers: [], now: null, next: 0 },
     };
     this.playing = false;
     this.onchange = null;
@@ -562,7 +624,7 @@ export class SoundEngine {
   prepare() {
     this.ensureContext();
     for (const l of Object.values(this.layers)) {
-      if (l.id && l.id !== 'voice') this.getBuffer(l.id).catch(() => {});
+      if (l.id && l.id !== 'voice') this.getBuffer(l.id === 'medley' ? MEDLEY[0] : l.id).catch(() => {});
     }
   }
 
@@ -642,11 +704,12 @@ export class SoundEngine {
     const id = l.id;
     if (!id) return;
     const token = ++l.token;
+    const medley = id === 'medley';
     this.loading++;
     this.emit();
     let buf = null;
     try {
-      buf = await this.getBuffer(id);
+      buf = await this.getBuffer(medley ? MEDLEY[0] : id);
     } finally {
       this.loading--;
       this.emit();
@@ -654,34 +717,78 @@ export class SoundEngine {
     // Пока звук готовился, его могли выключить или сменить.
     if (!buf || token !== l.token || !this.playing || l.id !== id) return;
     const ctx = this.ctx;
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
     const fade = ctx.createGain();
     fade.gain.setValueAtTime(0, ctx.currentTime);
     fade.gain.linearRampToValueAtTime(1, ctx.currentTime + fadeIn);
-    src.connect(fade).connect(l.gain);
+    fade.connect(l.gain);
+    l.fade = fade;
+    l.srcs = [];
     if (layerName === 'music') {
       l.wet.gain.setTargetAtTime(id === 'voice' ? WET.voice : WET.default, ctx.currentTime, 0.1);
     }
+    if (medley) {
+      l.next = 0;
+      this.queueTune(l, token, buf, ctx.currentTime);
+      return;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    src.connect(fade);
     // Шум начинаем со случайного места, колыбельную — с начала.
     const offset = layerName === 'noise' ? Math.random() * buf.duration : 0;
     src.start(ctx.currentTime, offset);
-    l.src = src;
-    l.fade = fade;
+    l.srcs.push(src);
+  }
+
+  // «Все по кругу»: колыбельные звучат одна за другой без пауз.
+  // Следующую готовим заранее и ставим точно на конец текущей.
+  queueTune(l, token, buf, when) {
+    const ctx = this.ctx;
+    const id = MEDLEY[l.next % MEDLEY.length];
+    l.next++;
+    const at = Math.max(when, ctx.currentTime + 0.05);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(l.fade);
+    src.start(at);
+    src.onended = () => { l.srcs = l.srcs.filter((s) => s !== src); };
+    l.srcs.push(src);
+    l.timers.push(setTimeout(() => {
+      if (token !== l.token) return;
+      l.now = id;
+      this.emit();
+    }, (at - ctx.currentTime) * 1000));
+    const end = at + buf.duration;
+    l.timers.push(setTimeout(async () => {
+      if (token !== l.token || !this.playing) return;
+      const next = await this.getBuffer(MEDLEY[l.next % MEDLEY.length]).catch(() => null);
+      if (next && token === l.token && this.playing) this.queueTune(l, token, next, end);
+    }, Math.max(0, (end - ctx.currentTime - 8) * 1000)));
+  }
+
+  // Что звучит в слое прямо сейчас (для «Все по кругу» — текущая колыбельная).
+  current(layerName) {
+    const l = this.layers[layerName];
+    return l.id === 'medley' && l.now ? l.now : l.id;
   }
 
   stopSource(layerName, fadeOut) {
     const l = this.layers[layerName];
     l.token++;
-    if (!l.src) return;
-    const { src, fade } = l;
+    l.timers.forEach(clearTimeout);
+    l.timers = [];
+    l.now = null;
+    if (!l.fade) return;
     const now = this.ctx.currentTime;
+    const { fade } = l;
     fade.gain.cancelScheduledValues(now);
     fade.gain.setValueAtTime(fade.gain.value, now);
     fade.gain.linearRampToValueAtTime(0, now + fadeOut);
-    src.stop(now + fadeOut + 0.05);
-    l.src = null;
+    for (const src of l.srcs) {
+      try { src.stop(now + fadeOut + 0.05); } catch (e) { /* уже остановлен */ }
+    }
+    l.srcs = [];
     l.fade = null;
   }
 

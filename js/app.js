@@ -423,7 +423,7 @@ function buildChips(container, list, layer) {
 }
 
 function playingTitle() {
-  const names = [engine.layers.noise.id, engine.layers.music.id].filter(Boolean).map(soundName);
+  const names = [engine.current('noise'), engine.current('music')].filter(Boolean).map(soundName);
   return names.join(' и ');
 }
 
