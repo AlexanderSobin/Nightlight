@@ -835,10 +835,47 @@ input[type='range']::-moz-range-thumb {
   color: var(--ink);
 }
 
-.voice {
-  margin-top: 22px;
-  padding-top: 4px;
+.own {
+  margin-top: 26px;
+  padding-top: 2px;
   border-top: 1px solid var(--line);
+}
+
+.own label.btn {
+  cursor: pointer;
+}
+
+#trackFile:focus-visible + label {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.own-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.own-list li {
+  display: grid;
+  grid-template-columns: 1fr 40px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.own-list input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 15.5px;
+  font-weight: 600;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* ---------- Малыш ---------- */

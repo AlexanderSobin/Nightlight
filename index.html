@@ -28,6 +28,7 @@
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8.5 5.5v13l10-6.5z" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12" stroke-width="2.6"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
   </svg>
 
@@ -115,14 +116,20 @@
           </div>
           <input type="range" id="musicVolume" min="0" max="100" step="1">
 
-          <div id="voiceBox" class="voice">
-            <p class="hint">Запишите, как вы поёте колыбельную или шепчете «шшш», — запись будет звучать по кругу. До трёх минут.</p>
-            <div class="row">
+          <div class="own">
+            <h3>Свои колыбельные</h3>
+            <p class="hint">Запишите, как вы поёте любимую колыбельную, или добавьте песню файлом с телефона. Она появится среди колыбельных и в «Все по кругу». Запись — до 3 минут, файл — до 6.</p>
+            <ul id="ownList" class="own-list" hidden></ul>
+            <div class="row split">
               <button id="recordBtn" class="btn">
                 <svg aria-hidden="true"><use href="#i-mic"/></svg>
                 <span>Записать голос</span>
               </button>
-              <button id="deleteVoiceBtn" class="btn quiet" hidden>Удалить запись</button>
+              <input id="trackFile" class="visually-hidden" type="file" accept="audio/*" multiple>
+              <label for="trackFile" class="btn">
+                <svg aria-hidden="true"><use href="#i-plus"/></svg>
+                <span>Добавить файл</span>
+              </label>
             </div>
           </div>
 

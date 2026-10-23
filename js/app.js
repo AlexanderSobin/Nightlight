@@ -1,7 +1,7 @@
 import { SoundEngine, NOISES, MELODIES, soundName } from './sound.js';
 import { loadSettings, saveSettings, files } from './store.js';
 import { KeepAwake } from './wake.js';
-import { CryListener, VoiceRecorder, decodeVoice, micSupported, recorderSupported } from './mic.js';
+import { CryListener, VoiceRecorder, decodeTrack, micSupported, recorderSupported } from './mic.js';
 import { Journal, ageInfo, fmtTimer } from './journal.js';
 
 const PRESETS = [
@@ -312,7 +312,9 @@ function poke() {
   clearTimeout(sheetTimer);
   if (!sheetOpen) return;
   sheetTimer = setTimeout(() => {
-    if (!recorder.recording) closeSheet();
+    const typing = document.activeElement && document.activeElement.matches('input[type="text"]');
+    if (recorder.recording || typing) poke();
+    else closeSheet();
   }, 60000);
 }
 
@@ -369,7 +371,9 @@ function bindChrome() {
 
 const engine = new SoundEngine();
 engine.layers.noise.id = settings.noise;
-engine.layers.music.id = settings.music === 'voice' ? null : settings.music;
+settings.userTracks = [...settings.userTracks];
+// Свои колыбельные подключаются после чтения из IndexedDB (restoreTracks).
+engine.layers.music.id = settings.music && settings.music !== 'voice' && !settings.music.startsWith('u:') ? settings.music : null;
 engine.layers.noise.volume = settings.noiseVolume;
 engine.layers.music.volume = settings.musicVolume;
 
@@ -398,11 +402,6 @@ function stopSound() {
 }
 
 function selectSound(layer, id) {
-  if (id === 'voice' && !engine.voiceBuffer) {
-    toast('Сначала запишите голос — кнопка ниже');
-    $('#recordBtn').focus();
-    return;
-  }
   const next = settings[layer] === id ? null : id;
   settings[layer] = next;
   persist();
@@ -423,16 +422,13 @@ function buildChips(container, list, layer) {
 }
 
 function playingTitle() {
-  const names = [engine.current('noise'), engine.current('music')].filter(Boolean).map(soundName);
+  const names = [engine.current('noise'), engine.current('music')].filter(Boolean).map(nameOf);
   return names.join(' и ');
 }
 
 function updateSoundUI() {
   $$('#noiseChips .chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === settings.noise)));
-  $$('#musicChips .chip').forEach((b) => {
-    b.setAttribute('aria-pressed', String(b.dataset.id === settings.music));
-    if (b.dataset.id === 'voice') b.classList.toggle('empty', !engine.voiceBuffer);
-  });
+  $$('#musicChips .chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === settings.music)));
   const play = $('#playBtn');
   play.setAttribute('aria-label', engine.playing ? 'Выключить звук' : 'Включить звук');
   play.querySelector('use').setAttribute('href', engine.playing ? '#i-pause' : '#i-play');
@@ -458,7 +454,7 @@ function updatePill() {
 
 function bindSoundPanel() {
   buildChips($('#noiseChips'), NOISES, 'noise');
-  buildChips($('#musicChips'), MELODIES, 'music');
+  renderMusicChips();
   $('#playBtn').addEventListener('click', () => (engine.playing ? stopSound() : startSound()));
   $('#nowPlaying').addEventListener('click', () => {
     if (engine.playing) stopSound();
@@ -482,27 +478,129 @@ function bindSoundPanel() {
     });
   }
 
-  if (!recorderSupported()) {
-    $('#voiceBox').hidden = true;
-    const voiceChip = $('#musicChips .chip[data-id="voice"]');
-    if (voiceChip) voiceChip.hidden = true;
-  }
+  if (!recorderSupported()) $('#recordBtn').hidden = true;
   $('#recordBtn').addEventListener('click', toggleRecording);
-  $('#deleteVoiceBtn').addEventListener('click', async () => {
-    await files.remove('voice').catch(() => {});
-    engine.setVoice(null);
-    if (settings.music === 'voice') {
-      settings.music = null;
-      persist();
-      engine.setLayer('music', null);
-    }
-    updateVoiceUI();
-    toast('Запись удалена');
-  });
+  $('#trackFile').addEventListener('change', onFilesPicked);
   engine.onchange = updateSoundUI;
 }
 
-// ---------- Мамин голос ----------
+// ---------- Свои колыбельные: записанные голосом или из файлов ----------
+
+const userKey = (id) => `track:${id}`;
+const findTrack = (layerId) => settings.userTracks.find((t) => `u:${t.id}` === layerId);
+
+function nameOf(id) {
+  if (id && id.startsWith('u:')) {
+    const t = findTrack(id);
+    return t ? (t.name.trim() || 'Без названия') : '';
+  }
+  return soundName(id);
+}
+
+engine.loadUser = async (layerId) => {
+  const blob = await files.get(userKey(layerId.slice(2)));
+  return blob ? decodeTrack(blob, engine.ensureContext()) : null;
+};
+
+function renderMusicChips() {
+  const wrap = $('#musicChips');
+  wrap.textContent = '';
+  const builtIn = MELODIES.filter((m) => m.id !== 'medley');
+  const own = settings.userTracks.map((t) => ({ id: `u:${t.id}`, name: t.name.trim() || 'Без названия' }));
+  buildChips(wrap, [...builtIn, ...own, MELODIES.find((m) => m.id === 'medley')], 'music');
+}
+
+function renderOwnList() {
+  const list = $('#ownList');
+  list.textContent = '';
+  for (const t of settings.userTracks) {
+    const li = document.createElement('li');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 40;
+    input.value = t.name;
+    input.dataset.id = t.id;
+    input.setAttribute('aria-label', 'Название колыбельной');
+    input.addEventListener('input', () => {
+      t.name = input.value;
+      persist();
+      const chip = $(`#musicChips .chip[data-id="u:${t.id}"]`);
+      if (chip) chip.textContent = t.name.trim() || 'Без названия';
+      updateSoundUI();
+    });
+    const del = document.createElement('button');
+    del.className = 'icon-btn small';
+    del.setAttribute('aria-label', `Удалить «${t.name}»`);
+    del.innerHTML = '<svg aria-hidden="true"><use href="#i-close"/></svg>';
+    del.addEventListener('click', () => removeTrack(t.id));
+    li.append(input, del);
+    list.appendChild(li);
+  }
+  list.hidden = !settings.userTracks.length;
+}
+
+function syncTracks() {
+  engine.userIds = settings.userTracks.map((t) => `u:${t.id}`);
+  renderMusicChips();
+  renderOwnList();
+  updateSoundUI();
+}
+
+async function addTrack(blob, name, { minSeconds = 0, focusName = false } = {}) {
+  let buf;
+  try {
+    buf = await decodeTrack(blob, engine.ensureContext());
+  } catch (e) {
+    toast(`Не получилось открыть «${name}». Подойдут mp3, m4a, wav и записи с микрофона.`);
+    return false;
+  }
+  if (buf.duration < minSeconds) {
+    toast('Почти ничего не слышно. Запишите погромче или подольше.');
+    return false;
+  }
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  try {
+    await files.put(userKey(id), blob);
+  } catch (e) {
+    toast('Не хватило места на телефоне, чтобы сохранить запись.');
+    return false;
+  }
+  settings.userTracks.push({ id, name });
+  persist();
+  engine.userBuffers.set(`u:${id}`, buf);
+  syncTracks();
+  settings.music = null;
+  selectSound('music', `u:${id}`);
+  if (focusName) {
+    const input = $(`#ownList input[data-id="${id}"]`);
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }
+  return true;
+}
+
+async function removeTrack(id) {
+  const index = settings.userTracks.findIndex((t) => t.id === id);
+  if (index < 0) return;
+  const [track] = settings.userTracks.splice(index, 1);
+  const blob = await files.get(userKey(id));
+  await files.remove(userKey(id)).catch(() => {});
+  if (settings.music === `u:${id}`) {
+    settings.music = null;
+    engine.setLayer('music', null);
+  }
+  engine.forgetUser(`u:${id}`);
+  persist();
+  syncTracks();
+  toast(`Удалено: «${track.name.trim() || 'Без названия'}»`, 'Вернуть', async () => {
+    if (blob) await files.put(userKey(id), blob).catch(() => {});
+    settings.userTracks.splice(Math.min(index, settings.userTracks.length), 0, track);
+    persist();
+    syncTracks();
+  });
+}
 
 let recTicker = null;
 async function toggleRecording() {
@@ -529,39 +627,40 @@ async function toggleRecording() {
 async function onRecorded(blob) {
   clearInterval(recTicker);
   $('#recordBtn').classList.remove('recording');
-  let buf = null;
-  try {
-    buf = await decodeVoice(engine.ensureContext(), blob);
-  } catch (e) {
-    toast('Не получилось прочитать запись. Попробуйте ещё раз.');
+  $('#recordBtn span').textContent = 'Записать голос';
+  const n = settings.userTracks.filter((t) => /^Запись \d+$/.test(t.name)).length + 1;
+  if (await addTrack(blob, `Запись ${n}`, { minSeconds: 2.5, focusName: true })) {
+    toast('Записано и уже звучит. Дайте записи название.');
   }
-  if (buf && buf.duration < 2.5) {
-    toast('Почти ничего не слышно. Запишите погромче или подольше.');
-  } else if (buf) {
-    await files.put('voice', blob).catch(() => {});
-    engine.setVoice(buf);
-    settings.music = null;
-    selectSound('music', 'voice');
-    toast('Голос записан и уже звучит');
-  }
-  updateVoiceUI();
 }
 
-function updateVoiceUI() {
-  const has = Boolean(engine.voiceBuffer);
-  $('#recordBtn span').textContent = has ? 'Записать заново' : 'Записать голос';
-  $('#deleteVoiceBtn').hidden = !has;
-  updateSoundUI();
+async function onFilesPicked(e) {
+  const picked = [...e.target.files];
+  e.target.value = '';
+  let added = 0;
+  for (const file of picked) {
+    const name = file.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim().slice(0, 40) || 'Колыбельная';
+    if (await addTrack(file, name)) added++;
+  }
+  if (added) toast(added > 1 ? `Добавлено колыбельных: ${added}` : 'Добавлено и уже звучит');
 }
 
-async function restoreVoice() {
-  const blob = await files.get('voice');
-  if (!blob) return;
-  try {
-    engine.setVoice(await decodeVoice(engine.ensureContext(), blob));
-    if (settings.music === 'voice') engine.layers.music.id = 'voice';
-  } catch (e) { /* запись повреждена — просто не показываем */ }
-  updateVoiceUI();
+// Раньше была одна запись «Мамин голос» — переносим её в список.
+async function restoreTracks() {
+  settings.userTracks = settings.userTracks.filter((t) => t && t.id);
+  const old = await files.get('voice');
+  if (old) {
+    await files.put(userKey('voice'), old).catch(() => {});
+    await files.remove('voice').catch(() => {});
+    if (!settings.userTracks.some((t) => t.id === 'voice')) {
+      settings.userTracks.unshift({ id: 'voice', name: 'Мамин голос' });
+    }
+  }
+  if (settings.music === 'voice') settings.music = old ? 'u:voice' : null;
+  if (settings.music && settings.music.startsWith('u:') && !findTrack(settings.music)) settings.music = null;
+  if (settings.music && settings.music.startsWith('u:') && !engine.playing) engine.layers.music.id = settings.music;
+  persist();
+  syncTracks();
 }
 
 // ---------- Таймер сна ----------
@@ -877,7 +976,6 @@ function init() {
   setLightOn(true);
   updateBabyHeader();
   updateSoundUI();
-  updateVoiceUI();
   updateTimerUI();
   $$('input[type="range"]').forEach(updateRangeFill);
   sizeStars();
@@ -899,7 +997,7 @@ function init() {
     }
   });
 
-  restoreVoice();
+  restoreTracks();
   setInterval(tick, 1000);
   tick();
   poke();

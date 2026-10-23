@@ -27,7 +27,6 @@ export const MELODIES = [
   { id: 'moonrise', name: 'Взошла луна' },
   { id: 'musicbox', name: 'Шкатулка' },
   { id: 'medley', name: 'Все по кругу' },
-  { id: 'voice', name: 'Мамин голос' },
 ];
 
 export function soundName(id) {
@@ -556,14 +555,19 @@ const MAX_GAIN = { noise: 0.9, music: 0.85 };
 
 // Порядок колыбельных в режиме «Все по кругу».
 const MEDLEY = ['radost', 'brahms', 'kindlein', 'twinkle', 'silent', 'moon', 'goodmoon', 'moonrise'];
-const WET = { voice: 0.12, default: 0.4 };
+// Живому голосу и готовым песням почти не нужно эха, шкатулке — побольше.
+const isUser = (id) => id.startsWith('u:');
+const wetFor = (id) => (isUser(id) ? 0.12 : 0.4);
 
 export class SoundEngine {
   constructor() {
     this.ctx = null;
     this.cache = new Map();
     this.pending = new Map();
-    this.voiceBuffer = null;
+    // Свои колыбельные (id вида «u:…»): app.js декодирует их по запросу.
+    this.userBuffers = new Map();
+    this.userIds = [];
+    this.loadUser = null;
     this.worker = null;
     this.requests = new Map();
     this.reqId = 0;
@@ -594,7 +598,7 @@ export class SoundEngine {
     const music = this.layers.music;
     music.gain = ctx.createGain();
     music.wet = ctx.createGain();
-    music.wet.gain.value = WET.default;
+    music.wet.gain.value = wetFor('');
     const reverb = ctx.createConvolver();
     reverb.buffer = makeImpulse(ctx);
     music.gain.connect(this.master);
@@ -624,7 +628,7 @@ export class SoundEngine {
   prepare() {
     this.ensureContext();
     for (const l of Object.values(this.layers)) {
-      if (l.id && l.id !== 'voice') this.getBuffer(l.id === 'medley' ? MEDLEY[0] : l.id).catch(() => {});
+      if (l.id) this.getBuffer(l.id === 'medley' ? this.medleyList()[0] : l.id).catch(() => {});
     }
   }
 
@@ -639,8 +643,12 @@ export class SoundEngine {
     l.gain.gain.setTargetAtTime(g, this.ctx.currentTime, 0.08);
   }
 
-  setVoice(audioBuffer) {
-    this.voiceBuffer = audioBuffer;
+  medleyList() {
+    return [...MEDLEY, ...this.userIds];
+  }
+
+  forgetUser(id) {
+    this.userBuffers.delete(id);
   }
 
   // Синтез идёт в фоновом потоке, чтобы интерфейс не подвисал.
@@ -674,7 +682,7 @@ export class SoundEngine {
   }
 
   async getBuffer(id) {
-    if (id === 'voice') return this.voiceBuffer;
+    if (isUser(id)) return this.getUserBuffer(id);
     if (this.cache.has(id)) {
       const b = this.cache.get(id);
       this.cache.delete(id);
@@ -699,6 +707,28 @@ export class SoundEngine {
     }
   }
 
+  async getUserBuffer(id) {
+    if (this.userBuffers.has(id)) {
+      const b = this.userBuffers.get(id);
+      this.userBuffers.delete(id);
+      this.userBuffers.set(id, b);
+      return b;
+    }
+    if (this.pending.has(id)) return this.pending.get(id);
+    const job = Promise.resolve(this.loadUser ? this.loadUser(id) : null).then((buf) => {
+      if (buf) this.userBuffers.set(id, buf);
+      // Песни бывают длинными — держим в памяти не больше двух.
+      while (this.userBuffers.size > 2) this.userBuffers.delete(this.userBuffers.keys().next().value);
+      return buf;
+    });
+    this.pending.set(id, job);
+    try {
+      return await job;
+    } finally {
+      this.pending.delete(id);
+    }
+  }
+
   async startSource(layerName, fadeIn) {
     const l = this.layers[layerName];
     const id = l.id;
@@ -709,7 +739,7 @@ export class SoundEngine {
     this.emit();
     let buf = null;
     try {
-      buf = await this.getBuffer(medley ? MEDLEY[0] : id);
+      buf = await this.getBuffer(medley ? this.medleyList()[0] : id);
     } finally {
       this.loading--;
       this.emit();
@@ -724,7 +754,7 @@ export class SoundEngine {
     l.fade = fade;
     l.srcs = [];
     if (layerName === 'music') {
-      l.wet.gain.setTargetAtTime(id === 'voice' ? WET.voice : WET.default, ctx.currentTime, 0.1);
+      l.wet.gain.setTargetAtTime(wetFor(id), ctx.currentTime, 0.1);
     }
     if (medley) {
       l.next = 0;
@@ -745,7 +775,8 @@ export class SoundEngine {
   // Следующую готовим заранее и ставим точно на конец текущей.
   queueTune(l, token, buf, when) {
     const ctx = this.ctx;
-    const id = MEDLEY[l.next % MEDLEY.length];
+    const list = this.medleyList();
+    const id = list[l.next % list.length];
     l.next++;
     const at = Math.max(when, ctx.currentTime + 0.05);
     const src = ctx.createBufferSource();
@@ -761,9 +792,18 @@ export class SoundEngine {
     }, (at - ctx.currentTime) * 1000));
     const end = at + buf.duration;
     l.timers.push(setTimeout(async () => {
-      if (token !== l.token || !this.playing) return;
-      const next = await this.getBuffer(MEDLEY[l.next % MEDLEY.length]).catch(() => null);
-      if (next && token === l.token && this.playing) this.queueTune(l, token, next, end);
+      // Если запись не открылась (например, её удалили), берём следующую.
+      for (let tries = 0; tries < this.medleyList().length; tries++) {
+        if (token !== l.token || !this.playing) return;
+        const list = this.medleyList();
+        const next = await this.getBuffer(list[l.next % list.length]).catch(() => null);
+        if (token !== l.token || !this.playing) return;
+        if (next) {
+          this.queueTune(l, token, next, end);
+          return;
+        }
+        l.next++;
+      }
     }, Math.max(0, (end - ctx.currentTime - 8) * 1000)));
   }
 

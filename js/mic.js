@@ -126,16 +126,34 @@ export class VoiceRecorder {
   }
 }
 
-// Подготовить запись к зацикливанию: срезать тишину по краям
-// и сделать мягкие вход и выход, чтобы на стыке не было щелчка.
-export async function decodeVoice(ctx, blob) {
-  const raw = await blob.arrayBuffer();
-  const decoded = await new Promise((resolve, reject) => {
+const TRACK_RATE = 24000;
+const MAX_TRACK_SECONDS = 6 * 60;
+
+function decodeAudio(ctx, raw) {
+  return new Promise((resolve, reject) => {
     const p = ctx.decodeAudioData(raw, resolve, reject);
     if (p && p.then) p.then(resolve, reject);
   });
+}
+
+// Подготовить запись или песню к зацикливанию: свести в моно 24 кГц
+// (так песня занимает в разы меньше памяти), срезать тишину по краям
+// и сделать мягкие вход и выход, чтобы на стыке не было щелчка.
+export async function decodeTrack(blob, fallbackCtx) {
+  const raw = await blob.arrayBuffer();
+  let ctx = fallbackCtx;
+  try {
+    const Offline = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    ctx = new Offline(1, 1, TRACK_RATE);
+  } catch (e) { /* старый Safari: декодируем в основном контексте */ }
+  const decoded = await decodeAudio(ctx, raw);
   const sr = decoded.sampleRate;
-  const ch = decoded.getChannelData(0);
+  const total = Math.min(decoded.length, sr * MAX_TRACK_SECONDS);
+  const ch = new Float32Array(total);
+  for (let c = 0; c < decoded.numberOfChannels; c++) {
+    const data = decoded.getChannelData(c);
+    for (let i = 0; i < total; i++) ch[i] += data[i] / decoded.numberOfChannels;
+  }
   let start = 0, end = ch.length - 1;
   const gate = 0.01;
   while (start < end && Math.abs(ch[start]) < gate) start++;

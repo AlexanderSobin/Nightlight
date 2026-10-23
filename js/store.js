@@ -21,6 +21,8 @@ export const DEFAULTS = {
   babyName: '',
   babyBirth: '',
   babyGirl: true,
+  // Свои колыбельные: [{ id, name }]; сами записи лежат в IndexedDB.
+  userTracks: [],
 };
 
 export function loadSettings() {
