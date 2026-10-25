@@ -23,6 +23,10 @@ export const DEFAULTS = {
   babyGirl: true,
   // Свои колыбельные: [{ id, name }]; сами записи лежат в IndexedDB.
   userTracks: [],
+  // Плейлист: режим, свой порядок (пусто — как в списке) и выключенные колыбельные.
+  playMode: 'order',
+  playlistOrder: [],
+  playlistOff: [],
 };
 
 export function loadSettings() {

@@ -705,6 +705,89 @@ input[type='range']::-moz-range-thumb {
   animation: pulse 1s ease-in-out infinite;
 }
 
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.play-mode {
+  margin-top: 14px;
+}
+
+.playlist {
+  list-style: none;
+  margin: 12px 0 8px;
+  padding: 0;
+}
+
+.playlist li {
+  display: grid;
+  grid-template-columns: 1fr 40px 40px;
+  align-items: center;
+  min-height: 48px;
+  border-bottom: 1px solid var(--line);
+}
+
+.playlist li:first-child [data-move='-1'],
+.playlist li:last-child [data-move='1'] {
+  visibility: hidden;
+}
+
+.pl-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  font-size: 15.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pl-check input {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border-radius: 7px;
+  border: 1.5px solid var(--ink-3);
+  display: grid;
+  place-items: center;
+}
+
+.pl-check input:checked {
+  background: var(--tint);
+  border-color: var(--ink-2);
+}
+
+.pl-check input:checked::after {
+  content: '';
+  width: 10px;
+  height: 6px;
+  margin-top: -3px;
+  border-left: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: rotate(-45deg);
+}
+
+.pl-check input:not(:checked) + span {
+  color: var(--ink-3);
+}
+
+.playlist li.now .pl-check span::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 10px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 8px var(--lamp);
+}
+
 .play-btn {
   display: grid;
   place-items: center;

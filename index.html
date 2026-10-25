@@ -28,6 +28,9 @@
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8.5 5.5v13l10-6.5z" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12" stroke-width="2.6"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M6 6l8 6-8 6z" fill="currentColor" stroke="none"/><path d="M18 6v12" stroke-width="2.4"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
   </svg>
@@ -95,9 +98,14 @@
         <section class="panel" data-panel="sound" role="tabpanel" aria-label="Звуки" hidden>
           <div class="panel-head">
             <h2>Звуки</h2>
-            <button id="playBtn" class="play-btn" aria-label="Включить звук">
-              <svg aria-hidden="true"><use href="#i-play"/></svg>
-            </button>
+            <div class="head-actions">
+              <button id="nextBtn" class="icon-btn" aria-label="Следующая колыбельная" hidden>
+                <svg aria-hidden="true"><use href="#i-next"/></svg>
+              </button>
+              <button id="playBtn" class="play-btn" aria-label="Включить звук">
+                <svg aria-hidden="true"><use href="#i-play"/></svg>
+              </button>
+            </div>
           </div>
 
           <h3>Шум</h3>
@@ -110,15 +118,28 @@
 
           <h3>Колыбельные</h3>
           <div id="musicChips" class="chips"></div>
+          <div id="playMode" class="segmented play-mode" role="radiogroup" aria-label="Как играть колыбельные">
+            <button role="radio" data-mode="order">По очереди</button>
+            <button role="radio" data-mode="shuffle">Вперемешку</button>
+            <button role="radio" data-mode="one">Одну по кругу</button>
+          </div>
+          <p id="playModeHint" class="hint"></p>
           <div class="slider-row">
             <label for="musicVolume">Громкость мелодии</label>
             <output id="musicVolumeOut" for="musicVolume"></output>
           </div>
           <input type="range" id="musicVolume" min="0" max="100" step="1">
 
+          <details class="fold">
+            <summary>Плейлист</summary>
+            <p class="hint">Снимите галочку, чтобы колыбельная не звучала по очереди, а стрелками поменяйте порядок.</p>
+            <ol id="playlistList" class="playlist"></ol>
+            <button id="playlistReset" class="btn quiet">Вернуть как было</button>
+          </details>
+
           <div class="own">
             <h3>Свои колыбельные</h3>
-            <p class="hint">Запишите, как вы поёте любимую колыбельную, или добавьте песню файлом с телефона. Она появится среди колыбельных и в «Все по кругу». Запись — до 3 минут, файл — до 6.</p>
+            <p class="hint">Запишите, как вы поёте любимую колыбельную, или добавьте песню файлом с телефона. Она появится среди колыбельных и в конце плейлиста. Запись — до 3 минут, файл — до 6.</p>
             <ul id="ownList" class="own-list" hidden></ul>
             <div class="row split">
               <button id="recordBtn" class="btn">

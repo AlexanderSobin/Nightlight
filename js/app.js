@@ -373,7 +373,8 @@ const engine = new SoundEngine();
 engine.layers.noise.id = settings.noise;
 settings.userTracks = [...settings.userTracks];
 // Свои колыбельные подключаются после чтения из IndexedDB (restoreTracks).
-engine.layers.music.id = settings.music && settings.music !== 'voice' && !settings.music.startsWith('u:') ? settings.music : null;
+const builtInMusic = MELODIES.some((m) => m.id === settings.music);
+engine.layers.music.id = builtInMusic ? settings.music : null;
 engine.layers.noise.volume = settings.noiseVolume;
 engine.layers.music.volume = settings.musicVolume;
 
@@ -427,12 +428,21 @@ function playingTitle() {
 }
 
 function updateSoundUI() {
+  // В плейлисте колыбельные сменяют друг друга — запоминаем, какая звучит,
+  // чтобы подсветить её и продолжить с неё после паузы.
+  const playingMusic = engine.layers.music.id;
+  if (engine.playing && playingMusic && playingMusic !== settings.music) {
+    settings.music = playingMusic;
+    persist();
+  }
   $$('#noiseChips .chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === settings.noise)));
   $$('#musicChips .chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === settings.music)));
   const play = $('#playBtn');
   play.setAttribute('aria-label', engine.playing ? 'Выключить звук' : 'Включить звук');
   play.querySelector('use').setAttribute('href', engine.playing ? '#i-pause' : '#i-play');
   play.classList.toggle('on', engine.playing);
+  $('#nextBtn').hidden = !settings.music;
+  $$('#playlistList li').forEach((li) => li.classList.toggle('now', li.dataset.id === settings.music));
   document.body.classList.toggle('sound-loading', engine.loading > 0);
   updatePill();
 }
@@ -454,7 +464,7 @@ function updatePill() {
 
 function bindSoundPanel() {
   buildChips($('#noiseChips'), NOISES, 'noise');
-  renderMusicChips();
+  renderMusicChipsInPlaylistOrder();
   $('#playBtn').addEventListener('click', () => (engine.playing ? stopSound() : startSound()));
   $('#nowPlaying').addEventListener('click', () => {
     if (engine.playing) stopSound();
@@ -477,6 +487,10 @@ function bindSoundPanel() {
       persist();
     });
   }
+
+  $$('#playMode button').forEach((b) => b.addEventListener('click', () => setPlayMode(b.dataset.mode)));
+  $('#nextBtn').addEventListener('click', playNext);
+  bindPlaylist();
 
   if (!recorderSupported()) $('#recordBtn').hidden = true;
   $('#recordBtn').addEventListener('click', toggleRecording);
@@ -502,12 +516,127 @@ engine.loadUser = async (layerId) => {
   return blob ? decodeTrack(blob, engine.ensureContext()) : null;
 };
 
-function renderMusicChips() {
+// Кнопки колыбельных идут в порядке плейлиста.
+function renderMusicChipsInPlaylistOrder() {
   const wrap = $('#musicChips');
   wrap.textContent = '';
-  const builtIn = MELODIES.filter((m) => m.id !== 'medley');
-  const own = settings.userTracks.map((t) => ({ id: `u:${t.id}`, name: t.name.trim() || 'Без названия' }));
-  buildChips(wrap, [...builtIn, ...own, MELODIES.find((m) => m.id === 'medley')], 'music');
+  buildChips(wrap, playlistAll().map((id) => ({ id, name: nameOf(id) })), 'music');
+  updateSoundUI();
+}
+
+// ---------- Плейлист колыбельных ----------
+
+const PLAY_MODE_HINTS = {
+  order: 'Нажмите любую колыбельную — после неё остальные пойдут по порядку плейлиста.',
+  shuffle: 'Колыбельные из плейлиста звучат одна за другой в случайном порядке.',
+  one: 'Выбранная колыбельная повторяется по кругу.',
+};
+
+// Все колыбельные в порядке плейлиста: сначала свой порядок, новые — в конец.
+function playlistAll() {
+  const ids = [...MELODIES.map((m) => m.id), ...settings.userTracks.map((t) => `u:${t.id}`)];
+  const ordered = settings.playlistOrder.filter((id) => ids.includes(id));
+  return [...ordered, ...ids.filter((id) => !ordered.includes(id))];
+}
+
+function playlistActive() {
+  return playlistAll().filter((id) => !settings.playlistOff.includes(id));
+}
+
+function syncPlaylist() {
+  engine.setPlaylist(playlistActive(), settings.playMode);
+}
+
+function setPlayMode(mode) {
+  settings.playMode = mode;
+  persist();
+  $$('#playMode button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.mode === mode)));
+  $('#playModeHint').textContent = PLAY_MODE_HINTS[mode];
+  syncPlaylist();
+}
+
+function playMusic(id) {
+  settings.music = id;
+  persist();
+  engine.setLayer('music', id);
+  if (!engine.playing) startSound();
+}
+
+function playNext() {
+  const current = engine.layers.music.id || settings.music;
+  const mode = settings.playMode === 'one' ? 'order' : settings.playMode;
+  playMusic(current ? engine.nextAfter(current, mode) : playlistActive()[0] || MELODIES[0].id);
+}
+
+function renderPlaylist() {
+  const list = $('#playlistList');
+  const off = new Set(settings.playlistOff);
+  list.textContent = '';
+  for (const id of playlistAll()) {
+    const li = document.createElement('li');
+    li.dataset.id = id;
+    li.classList.toggle('now', id === settings.music);
+    const label = document.createElement('label');
+    label.className = 'pl-check';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = !off.has(id);
+    const name = document.createElement('span');
+    name.textContent = nameOf(id);
+    label.append(box, name);
+    li.append(label);
+    for (const [dir, icon, text] of [[-1, 'i-up', 'Выше'], [1, 'i-down', 'Ниже']]) {
+      const b = document.createElement('button');
+      b.className = 'icon-btn small';
+      b.dataset.move = dir;
+      b.setAttribute('aria-label', `${text}: ${nameOf(id)}`);
+      b.innerHTML = `<svg aria-hidden="true"><use href="#${icon}"/></svg>`;
+      li.append(b);
+    }
+    list.appendChild(li);
+  }
+}
+
+function bindPlaylist() {
+  const list = $('#playlistList');
+  list.addEventListener('change', (e) => {
+    const id = e.target.closest('li').dataset.id;
+    const off = new Set(settings.playlistOff);
+    if (e.target.checked) off.delete(id);
+    else off.add(id);
+    settings.playlistOff = [...off];
+    persist();
+    syncPlaylist();
+  });
+  list.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-move]');
+    if (!btn) return;
+    const id = btn.closest('li').dataset.id;
+    const order = playlistAll();
+    const from = order.indexOf(id);
+    const to = from + Number(btn.dataset.move);
+    if (to < 0 || to >= order.length) return;
+    [order[from], order[to]] = [order[to], order[from]];
+    settings.playlistOrder = order;
+    persist();
+    syncPlaylist();
+    renderPlaylist();
+    renderMusicChipsInPlaylistOrder();
+    // Оставляем фокус на той же стрелке, чтобы можно было нажимать дальше.
+    const again = $(`#playlistList li[data-id="${CSS.escape(id)}"] [data-move="${btn.dataset.move}"]`);
+    if (again) again.focus();
+  });
+  $('#playlistReset').addEventListener('click', () => {
+    settings.playlistOrder = [];
+    settings.playlistOff = [];
+    persist();
+    syncPlaylist();
+    renderPlaylist();
+    renderMusicChipsInPlaylistOrder();
+    toast('Плейлист снова как был: все колыбельные по порядку');
+  });
+  renderPlaylist();
+  setPlayMode(settings.playMode);
 }
 
 function renderOwnList() {
@@ -540,9 +669,10 @@ function renderOwnList() {
 }
 
 function syncTracks() {
-  engine.userIds = settings.userTracks.map((t) => `u:${t.id}`);
-  renderMusicChips();
+  renderMusicChipsInPlaylistOrder();
   renderOwnList();
+  renderPlaylist();
+  syncPlaylist();
   updateSoundUI();
 }
 
@@ -657,8 +787,10 @@ async function restoreTracks() {
     }
   }
   if (settings.music === 'voice') settings.music = old ? 'u:voice' : null;
+  // «Все по кругу» превратился в плейлист — начинаем с его первой колыбельной.
+  if (settings.music === 'medley') settings.music = playlistActive()[0] || null;
   if (settings.music && settings.music.startsWith('u:') && !findTrack(settings.music)) settings.music = null;
-  if (settings.music && settings.music.startsWith('u:') && !engine.playing) engine.layers.music.id = settings.music;
+  if (!engine.playing) engine.layers.music.id = settings.music;
   persist();
   syncTracks();
 }
